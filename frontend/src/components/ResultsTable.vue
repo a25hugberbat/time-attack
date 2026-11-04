@@ -8,10 +8,10 @@ defineProps({
   <table class="taula">
     <thead>
       <tr>
-        <th>Tecla</th>
-        <th>Objectiu</th>
-        <th>Temps real</th>
-        <th>Error</th>
+        <th>TECLA</th>
+        <th>OBJECTIU</th>
+        <th>TEMPS REAL</th>
+        <th>ERROR</th>
       </tr>
     </thead>
 

@@ -3,7 +3,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 defineProps({
   tecles: Array,
-  bloquejat: Boolean
+  bloquejat: Boolean,
+  usades: Array
 })
 
 const emit = defineEmits(['premuda'])
@@ -33,14 +34,10 @@ onUnmounted(() => {
 
 <template>
   <div class="teclat">
-    <button
-      v-for="tecla in tecles"
-      :key="tecla"
-      :disabled="bloquejat"
-      :class="{ premuda: teclaPremuda === tecla && !bloquejat }"
-      class="tecla"
-      @click="emit('premuda', tecla)"
-    >
+    <button v-for="tecla in tecles" :key="tecla" :disabled="bloquejat || usades.includes(tecla)" :class="{
+      premuda: teclaPremuda === tecla && !bloquejat && !usades.includes(tecla),
+      usada: usades.includes(tecla)
+    }" class="tecla" @click="emit('premuda', tecla)">
       {{ tecla }}
     </button>
   </div>
@@ -67,6 +64,16 @@ onUnmounted(() => {
   box-shadow: 0 6px 0 var(--tecla-ombra), 0 10px 18px rgba(0, 0, 0, 0.35);
   transition: transform 0.06s, box-shadow 0.06s, background 0.15s, color 0.15s;
   user-select: none;
+}
+
+.tecla.usada {
+  transform: translateY(6px);
+  box-shadow: 0 0 0 var(--tecla-ombra);
+  background: var(--tecla);
+  border-color: var(--vora);
+  color: var(--text-suau);
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .tecla:hover:not(:disabled) {
