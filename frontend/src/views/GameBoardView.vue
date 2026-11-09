@@ -29,6 +29,12 @@ const resultats = ref([])
 
 let tempsInici = 0
 
+function rebreClassificacio(dades) {
+  console.log('Classificació rebuda:', dades)
+
+  store.actualitzarClassificacio(dades)
+}
+
 function rebreTecla(tecla) {
 
   let tempsArribada = performance.now()
@@ -56,13 +62,23 @@ function rebreTecla(tecla) {
   if (resultats.value.length === tecles.length) {
     jugant.value = false
 
+    // Calculem l'error total
     let errorTotal = 0
     for (let index = 0; index < resultats.value.length; index++) {
       const element = resultats.value[index];
       errorTotal = errorTotal + Math.abs(element.error);
     }
 
-    store.guardarPartida(Number(errorTotal.toFixed(2)))
+    const errorFinal = Number(errorTotal.toFixed(2))
+
+    // Guardem la partida al nostre Pinia
+    store.guardarPartida(errorFinal)
+
+    // Enviem el resultat al servidor
+    socket.emit('resultat', {
+      nom: store.nomJugador,
+      errorTotal: errorFinal
+    })
   }
 }
 
@@ -99,6 +115,8 @@ onMounted(() => {
   window.addEventListener('keydown', gestionarTeclat)
 
   socket.on('connect', connectat)// escucha el evento de conexión
+  socket.on('classificacio', rebreClassificacio) // quan arribi un missatge classificacio executa la funció rebreClassificacio() i pasa les dades rebudes
+
   socket.connect() // inicia la conexión
 })
 
@@ -107,6 +125,8 @@ onUnmounted(() => {
   window.removeEventListener('keydown', gestionarTeclat)
 
   socket.off('connect', connectat) // elimina el listener
+  socket.off('classificacio', rebreClassificacio)
+
   socket.disconnect() // cierra la conexión
 })
 

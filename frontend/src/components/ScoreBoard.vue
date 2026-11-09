@@ -33,6 +33,27 @@ const millorMarca = computed(() => {
         <span class="valor">{{ millorMarca }} s</span>
       </p>
 
+      <h2>CLASSIFICACIÓ GLOBAL</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Jugador</th>
+      <th>Error total</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr
+      v-for="(resultat, index) in store.classificacio"
+      :key="index"
+    >
+      <td>{{ resultat.nom }}</td>
+      <td>{{ resultat.errorTotal }} s</td>
+    </tr>
+  </tbody>
+</table>
+  <h2>HISTORIAL PERSONAL</h2>
       <table class="taula">
         <thead>
           <tr>

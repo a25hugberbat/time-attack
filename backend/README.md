@@ -1,77 +1,131 @@
-# TIME ATTACK — Servidor Node.js + Socket.IO
+# TIME ATTACK — Backend simplificat
 
-Backend complet, preparat per als alumnes de 2n DAW. **Els alumnes NO han de programar el backend**: només desplegar-lo i integrar-lo amb el frontend Vue.
+**Pràctica de 2n DAW.** El joc continua funcionant localment a Vue. El servidor només **rep un resultat** i **envia la classificació compartida**. No hi ha sales, rondes sincronitzades ni càlcul de temps al servidor.
 
-## Requisits
+## 1. Iniciar el servidor amb Docker
 
-- Docker + Docker Compose plugin per a l'opció A.
-- Alternativament, Node.js 22 o superior i npm per a l'opció B.
-- Xarxa que permeti connectar amb el port TCP 3000 del servidor des dels ordinadors dels alumnes.
-
-## Opció A — Docker Compose (recomanada)
-
-Dins la carpeta `backend`:
+Obre un terminal a la carpeta que conté `compose.yaml`:
 
 ```bash
 docker compose up --build -d
 docker compose ps
+```
+
+Comprova `http://localhost:3000/health`. Al principi retorna:
+
+```json
+{"ok":true,"resultats":0}
+```
+
+Per consultar els missatges del servidor:
+
+```bash
 docker compose logs -f
 ```
 
-Comprova al mateix servidor: `curl http://localhost:3000/health`.
-
-Atura el servidor amb `docker compose down`. Per veure les actualitzacions del codi, reconstrueix-lo amb `docker compose up --build -d`.
-
-Si el professor l'allotja en un altre ordinador de la LAN, al navegador dels alumnes la URL serà `http://IP_DEL_PROFESSOR:3000`, no `http://localhost:3000`. Configureu el firewall si cal.
-
-## Opció B — Execució sense Docker
+Per aturar-lo:
 
 ```bash
-npm install
-npm start
+docker compose down
 ```
 
-## Proves
+Alternativa sense Docker, amb Node.js instal·lat: `npm install` i `npm start`.
+
+## 2. Els dos esdeveniments Socket.IO
+
+| Direcció | Esdeveniment | Dades |
+|---|---|---|
+| Vue → servidor | `resultat` | `{ nom: 'Anna', errorTotal: 0.85 }` (segons) |
+| Servidor → Vue | `classificacio` | `[{ nom: 'Anna', errorTotal: 0.85 }, ...]` |
+
+Quan un navegador es connecta, rep la classificació actual. Quan algú envia un resultat vàlid, el servidor l'afegeix i envia **tota** la classificació a tots els navegadors.
+
+El servidor no ordena els resultats; podeu ordenar-los a Vue com a repte. Les partides repetides d'un mateix jugador es guarden com a entrades diferents.
+
+## 3. Connexió des de Vue
+
+Al **projecte Vue** (no al servidor):
 
 ```bash
-npm test
+npm install socket.io-client
 ```
 
-Aquests tests només comproven les funcions de regles del joc, sense iniciar el servidor. Per fer una prova de dues connexions Socket.IO reals:
+Crea un fitxer `.env` a l'arrel de Vue:
 
-```bash
-# Terminal 1
-npm start
-# Terminal 2 (mateixa carpeta i amb npm install fet)
-npm run smoke
+```dotenv
+VITE_SOCKET_URL=http://localhost:3000
 ```
 
-El *smoke test* prova l'entrada de dues persones, l'inici, una pulsació vàlida, el bloqueig d'un duplicat i la publicació dels resultats. El test complet espera que acabi una ronda.
+En `src/services/socket.js`:
 
-## Regles del backend
+```js
+import { io } from 'socket.io-client'
 
-- Primer participant d'una sala: es converteix en amfitrió.
-- Calen almenys dos participants per començar.
-- Cada jugador pot prémer A, S, D i F una vegada per ronda.
-- Només el servidor calcula el temps i la puntuació.
-- Ronda 1: A=2s, S=4s, D=5s, F=7s. Les rondes següents canvien els objectius.
-- El resultat es publica després de l'últim objectiu més 2s de marge.
-- Abans del final es comparteixen `pressedKeys`, però **no** el temps exacte ni la puntuació.
-- Cada tecla omesa o amb error superior a 3.000ms rep 3.000ms d'error. Guanya el menor error total.
-- Les sales viuen en memòria i desapareixen si no hi ha participants.
+export const socket = io(import.meta.env.VITE_SOCKET_URL, {
+  autoConnect: false
+})
+```
 
-## Fitxers importants
+A `GameBoardView.vue`, importa `socket` i utilitza el store Pinia de la sessió 2:
 
-- `src/server.js`: servidor HTTP, gestió de sales i Socket.IO.
-- `src/rules.js`: configuració de rondes, validació i puntuació.
-- `compose.yaml`: servei Docker amb port 3000.
-- `Dockerfile`: imatge Node 22 Alpine.
-- `test/rules.test.js`: tests de regles.
-- `scripts/smoke.mjs`: test d'integració que requereix un servidor en marxa.
-- `../contracte/PROTOCOL-SOCKET.md`: dades i esdeveniments exactes.
+```js
+import { onMounted, onUnmounted } from 'vue'
+import { socket } from '@/services/socket'
+import { useGameStore } from '@/stores/game'
 
-## Notes de seguretat i precisió
+const store = useGameStore()
 
-Per facilitar l'entorn docent, CORS està configurat amb `*`. **No exposeu aquest servidor tal qual a Internet:** no hi ha autenticació, limitació de peticions ni persistència. La precisió és la del temps de recepció al servidor; no compensa la latència de xarxa. Una desconnexió elimina el jugador de la sala.
+function rebreClassificacio(dades) {
+  store.actualitzarClassificacio(dades)
+}
 
-Si el frontend està servit per HTTPS, caldrà publicar també Socket.IO per HTTPS / WSS mitjançant un proxy invers; una URL `http://` podria quedar bloquejada com a contingut mixt.
+onMounted(() => {
+  socket.on('classificacio', rebreClassificacio)
+  socket.connect()
+})
+
+onUnmounted(() => {
+  socket.off('classificacio', rebreClassificacio)
+  socket.disconnect()
+})
+```
+
+**Important:** afegeix els imports, el store i els hooks al component existent; no dupliquis declaracions que ja hi hagi.
+
+Al **store Pinia en Composition API**, afegeix i retorna:
+
+```js
+const classificacio = ref([])
+
+function actualitzarClassificacio(dades) {
+  classificacio.value = dades
+}
+```
+
+Al final de `rebreTecla()`, just quan acaba la partida i ja has calculat `errorTotal` (en segons), envia també:
+
+```js
+socket.emit('resultat', {
+  nom: store.nomJugador,
+  errorTotal: Number(errorTotal.toFixed(2))
+})
+```
+
+`ScoreBoard.vue` pot mostrar `store.classificacio`. **No eliminis** l'historial local `store.partides` de la sessió 2: és independent de la classificació compartida.
+
+## 4. Proves a l'aula
+
+1. Obre el frontend en dos navegadors amb noms diferents.
+2. Juga una partida en el primer i comprova que el resultat apareix als dos.
+3. Juga una partida en el segon i comprova que tots dos reben la llista ampliada.
+4. Recarrega una pàgina: el servidor tornarà a enviar-li la classificació mentre continuï en execució.
+
+Si el backend és en un altre ordinador, substitueix `localhost` a `.env` per la IP d'aquell equip i reinicia Vite. El port TCP 3000 ha de ser accessible des de l'ordinador del navegador.
+
+## Límits d'aquest prototipus
+
+- Dades **en memòria**: es perden en reiniciar el servidor/contenidor.
+- Sense comptes, sales, autentificació ni base de dades.
+- Els temps i errors es calculen al **client**, de manera que els resultats es poden manipular. No és un sistema de competició segur.
+- CORS obert a qualsevol origen: únicament per a desenvolupament docent en una xarxa controlada, **no publicar directament a Internet**.
+- L'array de resultats creix mentre el servidor estigui en execució; per a una pràctica curta és suficient, no per a producció.

@@ -5,6 +5,7 @@ export const useGameStore = defineStore('game', () => {
 
   const nomJugador = ref('')
   const partides = ref([])
+  const classificacio = ref([])
 
   const playerId = ref('')
   const roomCode = ref('')
@@ -52,9 +53,14 @@ export const useGameStore = defineStore('game', () => {
     players.value = []
   }
 
+  function actualitzarClassificacio(dades) {
+    classificacio.value = dades
+  }
+
   return {
     nomJugador,
     partides,
+    classificacio,
     playerId,
     roomCode,
     phase,
@@ -67,6 +73,7 @@ export const useGameStore = defineStore('game', () => {
     guardarPartida,
     esborrarPartides,
     actualitzarSala,
+    actualitzarClassificacio,
     reiniciarSala
   }
 })

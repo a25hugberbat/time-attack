@@ -1,11 +1,7 @@
 services:
-  time-attack:
+  time-attack-simple:
     build: .
-    container_name: time-attack-server
+    container_name: time-attack-simple
     ports:
       - "3000:3000"
-    environment:
-      PORT: "3000"
-      # Només per a la pràctica a xarxa docent. Restringir en producció.
-      CORS_ORIGIN: "*"
     restart: unless-stopped

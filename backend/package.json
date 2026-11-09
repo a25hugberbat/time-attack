@@ -1,20 +1,12 @@
 {
-  "name": "time-attack-server",
+  "name": "time-attack-simple-backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Servidor docent Socket.IO per TIME ATTACK (2n DAW)",
-  "engines": { "node": ">=22" },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --test",
-    "smoke": "node scripts/smoke.mjs"
+    "start": "node src/server.js"
   },
   "dependencies": {
-    "socket.io": "4.8.4"
-  },
-  "devDependencies": {
-    "socket.io-client": "4.8.4"
+    "socket.io": "^4.8.4"
   }
 }
