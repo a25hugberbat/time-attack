@@ -15,12 +15,49 @@ const millorMarca = computed(() => {
     return Math.min(...errors)
 })
 
-
+// Classificació global ordenada de menor a major error
+const classificacioOrdenada = computed(() => {
+    // [...array] fa una CÒPIA, així sort() no modifica les dades de Pinia
+    const copia = [...store.classificacio]
+    // sort amb (a, b) => a - b ordena de menor a major
+    return copia.sort((a, b) => a.errorTotal - b.errorTotal)
+})
 </script>
 
 <template>
   <section class="historial">
 
+    <!-- ===== CLASSIFICACIÓ GLOBAL (dades del servidor) ===== -->
+    <p class="etiqueta">Classificació global</p>
+
+    <p v-if="store.classificacio.length === 0" class="buit">
+      Encara no hi ha resultats. Sigues el primer a jugar!
+    </p>
+
+    <table v-else class="taula">
+      <thead>
+        <tr>
+          <th>POS</th>
+          <th>JUGADOR</th>
+          <th>ERROR TOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(resultat, index) in classificacioOrdenada"
+          :key="index"
+          :class="{ primer: index === 0 }"
+        >
+          <td><span class="badge">{{ index + 1 }}</span></td>
+          <td>{{ resultat.nom }}</td>
+          <td>{{ resultat.errorTotal }} s</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr class="separador" />
+
+    <!-- ===== HISTORIAL PERSONAL (dades d'aquest navegador) ===== -->
     <p class="etiqueta">Historial de partides</p>
 
     <p v-if="store.partides.length === 0" class="buit">
@@ -33,27 +70,6 @@ const millorMarca = computed(() => {
         <span class="valor">{{ millorMarca }} s</span>
       </p>
 
-      <h2>CLASSIFICACIÓ GLOBAL</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Jugador</th>
-      <th>Error total</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    <tr
-      v-for="(resultat, index) in store.classificacio"
-      :key="index"
-    >
-      <td>{{ resultat.nom }}</td>
-      <td>{{ resultat.errorTotal }} s</td>
-    </tr>
-  </tbody>
-</table>
-  <h2>HISTORIAL PERSONAL</h2>
       <table class="taula">
         <thead>
           <tr>
@@ -172,6 +188,24 @@ td:first-child {
   background: var(--tecla);
   border: 1px solid var(--vora);
   font-weight: 700;
+}
+
+/* Millor resultat de la classificació global */
+.primer td {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.primer .badge {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--fons);
+}
+
+.separador {
+  border: none;
+  border-top: 1px solid var(--vora);
+  margin: 8px 0;
 }
 
 .be {
